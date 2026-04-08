@@ -7,45 +7,52 @@ inf = float('inf')
 
 class Node:
     def __init__(self):
-        self.cost = 0              # current cost
-        self.bound = 0             # lower bound on total cost
+        self.cost = 0
+        self.bound = 0
         self.current_node = 0
         self.visited = set()
-        self.load = 0              # current load
-        self.routes = [[0]]        # list of routes
+        self.load = 0
+        self.routes = [[0]]
 
     def __lt__(self, other):
         return self.bound < other.bound
 
 
-def compute_bound(node, cost_matrix):
+def compute_bound(node, cost_matrix, demand, capacity):
     n = len(cost_matrix)
-
     bound = node.cost
 
-    # for each unvisited customer node, add the cheapest outgoing edge
-    for i in range(1, n):
-        if i not in node.visited:
-            min_edge = min(cost_matrix[i][j] for j in range(n) if j != i)
-            bound += min_edge
+    unvisited = [i for i in range(1, n) if i not in node.visited]
+
+    if not unvisited:
+        return bound
+    
+    bound += min(cost_matrix[node.current_node][j] for j in unvisited + [0])
+
+    for i in unvisited:
+        min_edge = min(cost_matrix[i][j] for j in range(n) if j != i)
+        bound += min_edge
+
+    # lower bound
+    remaining_demand = sum(demand[i] for i in unvisited)
+    min_vehicles = (remaining_demand + capacity - 1) // capacity
+
+    min_depot_edge = min(cost_matrix[0][j] for j in range(1, n))
+    bound += min_vehicles * 2 * min_depot_edge
 
     return bound
 
 
 def expand_node(node, cost_matrix, demand, capacity):
-    """
-    ---------- Branching ----------
-    """ 
     n = len(cost_matrix)
     children = []
 
     for j in range(n):
-        
         if j == node.current_node:
             continue
-        if j == 0 and node.current_node == 0:
-            continue
         if j != 0 and j in node.visited:
+            continue
+        if len(node.visited) == 0 and j != 1:
             continue
 
         new_node = Node()
@@ -55,8 +62,21 @@ def expand_node(node, cost_matrix, demand, capacity):
         new_node.routes = [r[:] for r in node.routes]
         new_node.load = node.load
 
+        # Depot
         if j == 0:
-            # return to depot
+            if node.current_node == 0:
+                continue
+
+            # Return if there is no feasible customer nodes remaining
+            feasible = False
+            for k in range(1, n):
+                if k not in node.visited and node.load + demand[k] <= capacity:
+                    feasible = True
+                    break
+
+            if feasible:
+                continue
+
             new_node.routes[-1].append(0)
             new_node.routes.append([0])
             new_node.load = 0
@@ -77,14 +97,11 @@ def expand_node(node, cost_matrix, demand, capacity):
 
 
 def solve_vrp(cost_matrix, demand, capacity):
-    """
-    ---------- CVRP Branch-and-Bound Solver ----------
-    """
     n = len(cost_matrix)
 
     root = Node()
     root.current_node = 0
-    root.bound = compute_bound(root, cost_matrix=cost_matrix)
+    root.bound = compute_bound(root, cost_matrix, demand, capacity)
 
     pq = []
     heapq.heappush(pq, root)
@@ -98,6 +115,7 @@ def solve_vrp(cost_matrix, demand, capacity):
         if current.bound >= best_cost:
             continue
 
+        # All customers nodes has been visited
         if len(current.visited) == n - 1:
 
             final_cost = current.cost
@@ -108,18 +126,21 @@ def solve_vrp(cost_matrix, demand, capacity):
                 best_cost = final_cost
 
                 final_routes = [r[:] for r in current.routes]
+
                 if final_routes[-1][-1] != 0:
                     final_routes[-1].append(0)
+
+                final_routes = [r for r in final_routes if len(r) > 1]
 
                 best_routes = final_routes
 
             continue
 
-        # expand node
-        children = expand_node(current, cost_matrix=cost_matrix, demand=demand, capacity=capacity)
+        # Expanding child nodes
+        children = expand_node(current, cost_matrix, demand, capacity)
 
         for child in children:
-            child.bound = compute_bound(child, cost_matrix=cost_matrix)
+            child.bound = compute_bound(child, cost_matrix, demand, capacity)
 
             if child.bound < best_cost:
                 heapq.heappush(pq, child)
@@ -136,19 +157,19 @@ if __name__ == "__main__":
         [115, 58, 182, 156, 0]
     ]
 
-    demand = [0, 6, 6, 6, 6]
+    demand = [0, 6, 10, 6, 6]
     capacity = 15
 
     if len(demand) != len(cost_matrix):
-        print(" \nError: demand and cost matrix size mismatch")
+        print("Error: demand and cost matrix size mismatch")
         sys.exit(0)
-    
+
     start_time = time.time()
     cost, routes = solve_vrp(cost_matrix, demand, capacity)
-    bb_time = time.time() - start_time
+    end_time = time.time() - start_time
 
-    print("Minimum cost:", cost)
-    print("Branch-and-Bound time: {:.4f} seconds".format(bb_time))
+    print("Minimum Total Cost:", cost)
+    print("Branch and Bound runtime: {:.4f} seconds".format(end_time))
 
     if routes:
         print("Routes:")
