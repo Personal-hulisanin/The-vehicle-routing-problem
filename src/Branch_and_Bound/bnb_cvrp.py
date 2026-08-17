@@ -1,3 +1,4 @@
+import argparse
 import sys
 import time
 import heapq
@@ -150,19 +151,45 @@ def solve_vrp(cost_matrix, demand, capacity):
     return best_cost, best_routes
 
 
-def load_data():
-    cost_matrix = pd.read_csv("distances_demo.csv", header=None).values.tolist()
-    demand = pd.read_csv("demands_demo.csv", header=None).values.tolist()[0]
+def load_data(distances_path, demands_path):
+    cost_matrix = pd.read_csv(distances_path, header=None).values.tolist()
+    demand = pd.read_csv(demands_path, header=None).values.tolist()[0]
     return cost_matrix, demand
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Branch and Bound for CVRP")
+    parser.add_argument(
+        "-d", "--distances",
+        type=str,
+        required=True,
+        help="Path to the distance.csv file"
+    )
+    parser.add_argument(
+        "-D", "--demands",
+        type=str,
+        required=True,
+        help="Path to the demands.csv file"
+    )
+    parser.add_argument(
+        "-c", "--capacity",
+        type=int,
+        default=None,
+        help="Vehicle capacity (if omitted, you'll be prompted)"
+    )
+    return parser.parse_args()
 
 if __name__ == "__main__":
 
-    D,demand = load_data()
+    args = parse_args()
+    D, demand = load_data(args.distances, args.demands)
 
-    capacity = int(input(f"Enter vehicles capacity >= {max(demand)}: "))
+    capacity = args.capacity
+    if args.capacity is None:
+        capacity = int(input(f"Enter vehicles capacity >= {max(demand)}: "))
 
     if len(demand) != len(D):
-        print("Customer demand and Distance matrix dont match")
+        print("Customer demand and Distance matrix length not matching")
         sys.exit(0)
 
     start_time = time.time()

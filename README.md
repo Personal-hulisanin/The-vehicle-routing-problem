@@ -4,7 +4,7 @@
 This repository contains pure implementation of Branch and Bound algorithm used to solve Vehicle Routing Problem (VRP). 
 
 ## Features
-- Basic Branch and Bound approach for VRP.
+- Basic Branch and Bound approach for CVRP.
 - Supports standard VRP constraints
 
 ## Installation
@@ -20,5 +20,5 @@ This repository contains pure implementation of Branch and Bound algorithm used 
 ## Usage
 - Run the python code to solve the VRP:
    ```
-   python bb_cvrp.py
+   python .\src\Branch_and_Bound\bnb_cvrp.py -d .\data\distances_demo.csv -D .\data\demands_demo.csv -c 10
    ```
