@@ -1,0 +1,96 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<instance>
+    <info>
+        <dataset>Christofides et al. 1979 — Set M (branched subset)</dataset>
+        <name>M-n11-k1</name>
+    </info>
+    <network>
+        <nodes>
+            <node id="1" type="0">
+                <cx>40.0</cx>
+                <cy>50.0</cy>
+            </node>
+            <node id="2" type="1">
+                <cx>45.0</cx>
+                <cy>68.0</cy>
+            </node>
+            <node id="3" type="1">
+                <cx>45.0</cx>
+                <cy>70.0</cy>
+            </node>
+            <node id="4" type="1">
+                <cx>42.0</cx>
+                <cy>66.0</cy>
+            </node>
+            <node id="5" type="1">
+                <cx>42.0</cx>
+                <cy>68.0</cy>
+            </node>
+            <node id="6" type="1">
+                <cx>42.0</cx>
+                <cy>65.0</cy>
+            </node>
+            <node id="7" type="1">
+                <cx>40.0</cx>
+                <cy>69.0</cy>
+            </node>
+            <node id="8" type="1">
+                <cx>40.0</cx>
+                <cy>66.0</cy>
+            </node>
+            <node id="9" type="1">
+                <cx>38.0</cx>
+                <cy>68.0</cy>
+            </node>
+            <node id="10" type="1">
+                <cx>38.0</cx>
+                <cy>70.0</cy>
+            </node>
+            <node id="11" type="1">
+                <cx>35.0</cx>
+                <cy>66.0</cy>
+            </node>
+        </nodes>
+        <euclidean />
+        <decimals>0</decimals>
+    </network>
+    <fleet>
+        <vehicle_profile type="0">
+            <departure_node>1</departure_node>
+            <arrival_node>1</arrival_node>
+            <capacity>50.0</capacity>
+        </vehicle_profile>
+    </fleet>
+    <requests>
+        <request id="1" node="2">
+            <quantity>10.0</quantity>
+        </request>
+        <request id="2" node="3">
+            <quantity>30.0</quantity>
+        </request>
+        <request id="3" node="4">
+            <quantity>10.0</quantity>
+        </request>
+        <request id="4" node="5">
+            <quantity>10.0</quantity>
+        </request>
+        <request id="5" node="6">
+            <quantity>10.0</quantity>
+        </request>
+        <request id="6" node="7">
+            <quantity>20.0</quantity>
+        </request>
+        <request id="7" node="8">
+            <quantity>20.0</quantity>
+        </request>
+        <request id="8" node="9">
+            <quantity>20.0</quantity>
+        </request>
+        <request id="9" node="10">
+            <quantity>10.0</quantity>
+        </request>
+        <request id="10" node="11">
+            <quantity>10.0</quantity>
+        </request>
+    </requests>
+</instance>
