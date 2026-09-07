@@ -20,5 +20,9 @@ This repository contains pure implementation of Branch and Bound algorithm used 
 ## Usage
 - Run the python code to solve the VRP:
    ```
-   python .\src\Branch_and_Bound\bnb_cvrp.py -d .\data\distances_demo.csv -D .\data\demands_demo.csv -c 10
+   python .\src\bnb_cvrp.py
+   ```
+   OR
+   ```
+   python .\src\aco_cvrp.py
    ```
