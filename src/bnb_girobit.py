@@ -123,7 +123,7 @@ if __name__ == "__main__":
             sys.exit(0)
 
         start_time = time.time()
-        cost, routes, status = build_and_solve(D, demand, capacity, time_limit=600)
+        cost, routes, status = build_and_solve(D, demand, capacity, time_limit=1800)
         end_time = time.time() - start_time
 
         print("Minimum Total Cost:", cost)
