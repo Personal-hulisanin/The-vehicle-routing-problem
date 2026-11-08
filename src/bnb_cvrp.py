@@ -1,4 +1,6 @@
+import math
 from pathlib import Path
+import re
 import sys
 import time
 import heapq
@@ -20,34 +22,42 @@ class Node:
         self.routes = [[0]]
 
     def __lt__(self, other):
-        return self.bound < other.bound
+        if self.bound != other.bound:
+            return self.bound < other.bound
+        return len(self.visited) > len(other.visited)
 
 
-def compute_bound(node, cost_matrix, demand, capacity):
+def compute_bound(node, cost_matrix, demand, capacity, num_vehicles):
     n = len(cost_matrix)
     bound = node.cost
+    cur = node.current_node
 
     unvisited = [i for i in range(1, n) if i not in node.visited]
 
     if not unvisited:
+        if cur != 0:
+            bound += cost_matrix[cur][0]
         return bound
 
-    bound += min(cost_matrix[node.current_node][j] for j in unvisited + [0])
+    remaining = sum(demand[i] for i in unvisited)
+    spare = capacity - node.load
+    extra_routes = max(0, -(-(remaining - spare) // capacity))
+    if len(node.routes) + extra_routes > num_vehicles:
+        return inf
+
+    targets = unvisited if cur == 0 else unvisited + [0]
+    bound += min(cost_matrix[cur][j] for j in targets)
 
     for i in unvisited:
-        min_edge = min(cost_matrix[i][j] for j in range(n) if j != i)
-        bound += min_edge
+        bound += min(cost_matrix[i][j] for j in unvisited + [0] if j != i)
 
-    demand_remaining = sum(demand[i] for i in unvisited)
-    min_vehicles = (demand_remaining + capacity - 1) // capacity
-
-    min_depot_edge = min(cost_matrix[0][j] for j in range(1, n))
-    bound += min_vehicles * 2 * min_depot_edge
+    if extra_routes:
+        bound += extra_routes * min(cost_matrix[0][j] for j in unvisited)
 
     return bound
 
 
-def expand_node(node, cost_matrix, demand, capacity):
+def expand_node(node, cost_matrix, demand, capacity, num_vehicles):
     n = len(cost_matrix)
     children = []
 
@@ -74,6 +84,8 @@ def expand_node(node, cost_matrix, demand, capacity):
             new_node.routes[-1].append(0)
 
             if len(new_node.visited) < n - 1:
+                if len(new_node.routes) >= num_vehicles:
+                    continue
                 new_node.routes.append([0])
 
             new_node.load = 0
@@ -82,6 +94,10 @@ def expand_node(node, cost_matrix, demand, capacity):
 
             if node.load + demand[j] > capacity:
                 continue
+
+            if node.current_node == 0 and len(node.routes) > 1:
+                if j < node.routes[-2][1]:
+                    continue
 
             new_node.routes[-1].append(j)
             new_node.load += demand[j]
@@ -94,15 +110,16 @@ def expand_node(node, cost_matrix, demand, capacity):
     return children
 
 
-def solve_vrp(cost_matrix, demand, capacity, time_limit=1800):
+def solve_vrp(cost_matrix, demand, capacity, num_vehicles, time_limit=1800):
     n = len(cost_matrix)
 
     root = Node()
     root.current_node = 0
-    root.bound = compute_bound(root, cost_matrix, demand, capacity)
+    root.bound = compute_bound(root, cost_matrix, demand, capacity, num_vehicles)
 
     pq = []
-    heapq.heappush(pq, root)
+    if root.bound < inf:
+        heapq.heappush(pq, root)
 
     best_cost = inf
     best_routes = None
@@ -114,14 +131,10 @@ def solve_vrp(cost_matrix, demand, capacity, time_limit=1800):
 
         while pq:
 
-            elapsed = time.time() - start_time
-
-            if elapsed >= time_limit:
+            if time.time() - start_time >= time_limit:
                 optimal = False
                 print(f"\nTime limit reached ({time_limit}s)")
                 break
-
-            best_bound = pq[0].bound
 
             current = heapq.heappop(pq)
 
@@ -146,12 +159,7 @@ def solve_vrp(cost_matrix, demand, capacity, time_limit=1800):
                     if final_routes[-1][-1] != 0:
                         final_routes[-1].append(0)
 
-                    final_routes = [
-                        r for r in final_routes
-                        if len(r) > 2
-                    ]
-
-                    best_routes = final_routes
+                    best_routes = [r for r in final_routes if len(r) > 2]
 
                     progress_bar.set_postfix(
                         best_cost=best_cost,
@@ -160,21 +168,11 @@ def solve_vrp(cost_matrix, demand, capacity, time_limit=1800):
 
                 continue
 
-            children = expand_node(
-                current,
-                cost_matrix,
-                demand,
-                capacity
-            )
+            for child in expand_node(current, cost_matrix, demand,
+                                     capacity, num_vehicles):
 
-            for child in children:
-
-                child.bound = compute_bound(
-                    child,
-                    cost_matrix,
-                    demand,
-                    capacity
-                )
+                child.bound = compute_bound(child, cost_matrix, demand,
+                                            capacity, num_vehicles)
 
                 if child.bound < best_cost:
                     heapq.heappush(pq, child)
@@ -185,17 +183,26 @@ def solve_vrp(cost_matrix, demand, capacity, time_limit=1800):
                     queue=len(pq)
                 )
 
-    if pq:
-        best_bound = pq[0].bound
-    else:
+    if optimal:
         best_bound = best_cost
+    else:
+        open_bound = min((nd.bound for nd in pq), default=best_cost)
+        best_bound = min(open_bound, best_cost)
 
-    if best_cost == inf:
+    if best_cost == inf or best_cost == 0:
         gap = None
     else:
         gap = 100 * (best_cost - best_bound) / best_cost
 
     return best_cost, best_routes, optimal, best_bound, gap
+
+
+def instance_size(item):
+    name, inst = item
+    match = re.search(r"-n(\d+)", name)
+    if match:
+        return int(match.group(1))
+    return len(inst["demands"])
 
 
 if __name__ == "__main__":
@@ -206,7 +213,7 @@ if __name__ == "__main__":
         "data/christofides-et-al-1979-set-m"
     )
 
-    for name, inst in instances.items():
+    for name, inst in sorted(instances.items(), key=instance_size):
 
         D, demand = utils.data_inputs_to_cvrp(
             inst["demands"],
@@ -214,8 +221,10 @@ if __name__ == "__main__":
         )
 
         capacity = inst["capacity"]
+        
+        K = math.ceil(sum(demand) / capacity)
 
-        print(f"\n=== {name} ===")
+        print(f"\n=== {name} (K = {K}) ===")
 
         if len(demand) != len(D):
             print("Customer demand and Distance matrix length not matching")
@@ -223,22 +232,12 @@ if __name__ == "__main__":
 
         start_time = time.time()
 
-        cost, routes, optimal, best_bound, gap = solve_vrp(
-            D,
-            demand,
-            capacity,
-            time_limit=1800
-        )
+        cost, routes, optimal, best_bound, gap = solve_vrp(D, demand, capacity, K, time_limit=1800)
 
         end_time = time.time() - start_time
 
         print("Minimum Total Cost:", cost)
-
-        if optimal:
-            print("Status: OPTIMAL")
-        else:
-            print("Status: TIME_LIMIT")
-
+        print("Status:", "OPTIMAL" if optimal else "TIME_LIMIT")
         print("Best Bound:", best_bound)
 
         if gap is not None:
@@ -256,6 +255,7 @@ if __name__ == "__main__":
         results.append({
             "instance": name,
             "n_nodes": len(D),
+            "num_vehicles": K,
             "capacity": capacity,
             "best_cost": cost,
             "best_bound": best_bound,
@@ -271,7 +271,6 @@ if __name__ == "__main__":
     output_dir.mkdir(exist_ok=True)
     output_path = output_dir / "bnb_results.csv"
 
-    results_df = pd.DataFrame(results)
-    results_df.to_csv(output_path, index=False)
+    pd.DataFrame(results).to_csv(output_path, index=False)
 
     print(f"Saved results to {output_path}")
