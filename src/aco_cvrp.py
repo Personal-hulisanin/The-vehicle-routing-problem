@@ -8,7 +8,7 @@ import utils
 
 
 class AntColonyCVRP:
-    def __init__(self, n_ants=10, n_iterations=50, alpha=1, beta=2, evaporation=0.1, Q=100, seed=None):
+    def __init__(self, n_ants=10, n_iterations=50, alpha=1, beta=2, evaporation=0.5, Q=100, seed=None):
         self.n_ants = n_ants
         self.n_iterations = n_iterations
         self.alpha = alpha
